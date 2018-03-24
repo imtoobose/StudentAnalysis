@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from . import views
 from django.contrib.auth import views as auth_views
+from studentapp.views import ocr_view, ocr_form_view #importing class based views
 
 
 urlpatterns = [
@@ -17,4 +18,6 @@ urlpatterns = [
     path('get_student_data/<int:aadhar_id>/', views.getStudentData, name='getStudentData'),
     path('studentform/new', views.studentform, name = 'studentform'),
     path('chatbot', views.chatbot, name='chatbot'),
+    path('ocr/ocr', ocr_view, name='ocr_view'),
+    path('ocr/form', ocr_form_view, name='ocr_form_view'),
 ]

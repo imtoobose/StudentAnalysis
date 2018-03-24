@@ -8,6 +8,11 @@ import json
 import datetime
 from pprint import pprint
 from .forms import StudentForm
+from django.views.generic.base import View, TemplateView
+#install a few things to get the next two imports working
+from PIL import Image, ImageFilter
+from tesserocr import PyTessBaseAPI
+from django.views import View
 # Create your views here.
 
 def index(req):
@@ -416,3 +421,21 @@ def chatbot(request):
 			return JsonResponse({
 				'error': 'false',
 			})
+
+class OcrFormView(TemplateView):
+    template_name = 'ocr_form.html'
+ocr_form_view = OcrFormView.as_view()
+
+
+class OcrView(View):
+    def post(self, request, *args, **kwargs):
+        with PyTessBaseAPI() as api:
+            with Image.open(request.FILES['image']) as image:
+                image = image.convert('RGB')
+                sharpened_image = image.filter(ImageFilter.SHARPEN)
+                api.SetImage(sharpened_image)
+                utf8_text = api.GetUTF8Text()
+
+        return JsonResponse({'utf8_text': utf8_text})
+ocr_view = csrf_exempt(OcrView.as_view())
+
