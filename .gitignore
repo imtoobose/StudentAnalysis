@@ -14,5 +14,17 @@ build/
 __pycache__/
 .ipynb_checkpoints
 webpack-stats.dev.json
-db.sqlite3
 studentapp/static/csv
+
+### VirtualEnv template
+# Virtualenv
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ss]cripts
+[Ll]ocal
+pyvenv.cfg
+pip-selfcheck.json
+
