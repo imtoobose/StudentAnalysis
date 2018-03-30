@@ -37,10 +37,10 @@ class SearchPure extends Component{
 
     handleClick = e => {
         const eid = e.target.id
-        const [name, id, school, district, state] = eid.split('-')
+        const [value, id] = eid.split('-')
         this.setState({ searchText: ''})
         this.props.dispatch(getSuggestion({ query: '' }))
-        this.props.onChange({'name': name, 'aadhar_id': parseFloat(id), 'school': school, 'district': district, 'state': state})
+        this.props.onChange({'name': value, 'id': id})
     }
 
     render() {
@@ -70,8 +70,8 @@ class SearchPure extends Component{
                         {allValues.map((d, index) => (
                             <ListItem key={index} className={classes.listItem + ' hoverlistitem'}
                                 onClick={this.handleClick}
-                                id={`${d.name}-${d.id}-${d.school}-${d.district}-${d.state}`}>
-                                <ListItemText className={classes.removePointerEvents} primary={d.name} secondary={`${d.school}, ${d.district}, ${d.state}`} />
+                                id={`${d.name}-${d.id}`}>
+                                <ListItemText className={classes.removePointerEvents} primary={d.name} secondary={d.id} />
                             </ListItem>
                         ))}
                     </List>

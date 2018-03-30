@@ -26,6 +26,7 @@ def index(req):
 def get_formvals():
 	retGraph = {'x':[] , 'y':[] , 'filters':{}}
 	rval = Student._meta.get_fields()
+	print(rval)
 	types = {'CharField':'string', 
 			'IntegerField':'int',
 			'BooleanField':'bool',
@@ -42,18 +43,14 @@ def get_formvals():
 				fnum = fnum[6]
 
 				if ftype == 'name' and getattr(ss, 'filter{}_active'.format(fnum)):
-					fname = getattr(ss, 'filter{}_name'.format(fnum))
-					tem['name'] = fname
-					tem['type'] = getattr(ss, 'filter{}_type'.format(fnum))
-					retGraph['filters'][ss.filter1_name] = tem
-					retGraph['x'].append(fname)
-					retGraph['y'].append(fname)				
-					print('hsdhsdhsd', ss.filter1_name)
-				
+					tem['name'] = ss.filter1_name
+					tem['type'] = ss.filter1_type
 			else:
 				tem['name'] = i.name
 				tem['type'] = types[i.get_internal_type()]
 				retGraph['filters'][i.name] = tem
+				
+			if 'filter' not in i.name:
 				retGraph['x'].append(i.name)
 				retGraph['y'].append(i.name)
 
@@ -71,41 +68,19 @@ def getGraph(request):
 	if request.method == 'POST':
 		print(request.body)
 		dt = json.loads(request.body.decode('ascii'))
-		ss = Student.objects.all()[0]
-		custom_filter_names = {
-			getattr(ss, 'filter{}_name'.format(x)) : x for x in range(1, 6)
-		}
-		
 		x_axis = dt['x']
 		y_axis = dt['y']
-
-		if x_axis in custom_filter_names:
-			fid = custom_filter_names[x_axis]
-			x_axis = 'filter{}_val'.format(fid)
-
-		if y_axis in custom_filter_names:
-			fid = custom_filter_names[y_axis]
-			y_axis = 'filter{}_val'.format(fid)
-
 		filters_all = dt['filters']
 		new_filter = {}
 		x_filter_present = False
 		x_filter = {}
-		
-		print('custom filter names', custom_filter_names)
 
 		for i in filters_all:
 			parm = ''
 			val = ''
-			
 			for v,k in i.items():
 				if v == 'name':
-					print('v is ', v, v in custom_filter_names)
-					if k in custom_filter_names:
-						fid = custom_filter_names[k]
-						parm = 'filter{}_val'.format(fid)
-					else:
-						parm = k
+					parm = k
 				elif v == 'val':
 					val = k 
 				elif v == 'op':
@@ -257,7 +232,6 @@ def get_list_data(dt, save=True, limit=True):
 			'name': v['name'],
 			'value': v['value'],
 			'aadhar_id': k,
-			'unpack': v['unpacked'],
 		})
 		
 		udata = {'aadhar_id': k, 'name': v['name']}
@@ -366,10 +340,7 @@ def suggestions(request):
 			if not aadharSet.__contains__(s.aadhar_id):
 				studentList.append({
 					'id': s.aadhar_id,
-					'name': s.name,
-					'school': s.school,
-					'district': s.district,
-					'state': s.state,
+					'name': s.name
 				})
 
 				aadharSet.add(s.aadhar_id)
@@ -397,6 +368,25 @@ def suggestions(request):
 		}
 
 		return JsonResponse(result)
+
+def StudentFilterLatest(filters,ordering):
+	qs = Student.objects.filter(**filters).order_by(ordering)
+	sm = {}
+	mm = {}
+	for i in qs:
+		if sm.__contains__(i.aadhar_id):
+			if mm[i.aadhar_id] > i.date:
+				mm[i.aadhar_id] = i.date
+				sm[i.aadhar_id] = i
+		else:
+			mm[i.aadhar_id] = i.date
+			sm[i.aadhar_id] = i
+	arr = []
+	for k,v in sm.items():
+		arr.append(v)
+	arr = sorted(arr,key = lambda x: getattr(x,ordering[1:]),reverse=True)
+	print(arr)
+	return arr
 
 @csrf_exempt
 def getStudentData(request,aadhar_id):
@@ -556,17 +546,13 @@ def fix_param_display(param):
 def get_student_list(request):
 	if request.method == 'POST':
 		filters = json.loads(request.body)['filters']
-		print('filters', filters)
-		# sendfilters = convert_filters(filters)
-		# print('send', sendfilters)
 		ret = get_list_data({
-				'x': {'state': True, 'school': True, 'district': True},
-				'filters': filters,
+				'x': {},
+				'filters': sendfilters,
 			}, False, False)
 
-		pprint(ret)
 		return JsonResponse({
-			'data': ret['data'],
+			data: ret
 		})
 
 	else:
@@ -711,13 +697,13 @@ def getStateData(request,state_name):
 		p_c = len(Student.objects.filter(state=state_name,marks__gte=35))*100.0/(len(qs))
 		p_b = len(Student.objects.filter(state=state_name,gender="m"))*100.0/(len(qs))
 		p_g = len(Student.objects.filter(state=state_name,gender="f"))*100.0/(len(qs))
-		qs = Student.objects.filter(state=state_name,date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-marks')[:10]
+		qs =  StudentFilterLatest({'state':state_name,'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-marks')[:10]
 		for i in qs:
 			top_marks.append({'name':i.name,'marks':i.marks,'district':i.district})
-		qs = Student.objects.filter(state=state_name,date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-extra_curr')[:10]
+		qs = StudentFilterLatest({'state':state_name,'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-extra_curr')[:10]
 		for i in qs:
 			top_extra_curr.append({'name':i.name,'extra_curr':i.extra_curr,'district':i.district})
-		qs = Student.objects.filter(state=state_name,date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-sport')[:10]
+		qs = StudentFilterLatest({'state':state_name,'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-sport')[:10]
 		for i in qs:
 			top_sport.append({'name':i.name,'sport':i.sport,'district':i.district})
 		ret = {'s_n':s_n,'pp_data':pp_data,'ex_curr':ex_curr,'ss_no':state_ct,'sport_d':sport_d,'top_marks':top_marks,'top_sport':top_sport,'top_extra_curr':top_extra_curr,'t_s_a':t_s_a,'t_s_s':t_s_s,'t_s_e':t_s_e,'p_c':p_c,'p_b':p_b,'p_g':p_g}
@@ -769,13 +755,13 @@ def getDistrictData(request,district_name):
 		p_c = len(Student.objects.filter(district=district_name,marks__gte=35))*100.0/(len(qs))
 		p_b = len(Student.objects.filter(district=district_name,gender="m"))*100.0/(len(qs))
 		p_g = len(Student.objects.filter(district=district_name,gender="f"))*100.0/(len(qs))
-		qs = Student.objects.filter(district=district_name,date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-marks')[:10]
+		qs = StudentFilterLatest({'district':district_name,'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-marks')[:10]
 		for i in qs:
 			top_marks.append({'name':i.name,'marks':i.marks,'district':i.district})
-		qs = Student.objects.filter(district=district_name,date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-extra_curr')[:10]
+		qs = StudentFilterLatest({'district':district_name,'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-extra_curr')[:10]
 		for i in qs:
 			top_extra_curr.append({'name':i.name,'extra_curr':i.extra_curr,'district':i.district})
-		qs = Student.objects.filter(district=district_name,date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-sport')[:10]
+		qs = StudentFilterLatest({'district':district_name,'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-sport')[:10]
 		for i in qs:
 			top_sport.append({'name':i.name,'sport':i.sport,'district':i.district})
 		ret = {'s_n':s_n,'pp_data':pp_data,'ex_curr':ex_curr,'ss_no':state_ct,'sport_d':sport_d,'top_marks':top_marks,'top_sport':top_sport,'top_extra_curr':top_extra_curr,'t_s_a':t_s_a,'t_s_s':t_s_s,'t_s_e':t_s_e,'p_c':p_c,'p_b':p_b,'p_g':p_g}
@@ -826,13 +812,13 @@ def getCountryData(request):
 		p_c = len(Student.objects.filter(marks__gte=35))*100.0/(len(qs))
 		p_b = len(Student.objects.filter(gender="m"))*100.0/(len(qs))
 		p_g = len(Student.objects.filter(gender="f"))*100.0/(len(qs))
-		qs = Student.objects.filter(date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-marks')[:10]
+		qs = StudentFilterLatest({'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-marks')[:10]
 		for i in qs:
 			top_marks.append({'name':i.name,'marks':i.marks,'state':i.state})
-		qs = Student.objects.filter(date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-extra_curr')[:10]
+		qs = StudentFilterLatest({'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-extra_curr')[:10]
 		for i in qs:
 			top_extra_curr.append({'name':i.name,'extra_curr':i.extra_curr,'state':i.state})
-		qs = Student.objects.filter(date__gte=datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()).order_by('-sport')[:10]
+		qs = StudentFilterLatest({'date__gte':datetime.datetime.strptime('2010-01-01','%Y-%m-%d').date()},'-sport')[:10]
 		for i in qs:
 			top_sport.append({'name':i.name,'sport':i.sport,'state':i.state})
 		ret = {'pp_data':pp_data,'ex_curr':ex_curr,'ss_no':state_ct,'sport_d':sport_d,'top_marks':top_marks,'top_sport':top_sport,'top_extra_curr':top_extra_curr,'t_s_a':t_s_a,'t_s_s':t_s_s,'t_s_e':t_s_e,'p_c':p_c,'p_b':p_b,'p_g':p_g}
@@ -851,13 +837,13 @@ def getSchoolData(request,school_name):
 		p_c = len(Student.objects.filter(school=school_name,marks__gte=35))*100.0/(len(qs))
 		p_b = len(Student.objects.filter(school=school_name,gender="m"))*100.0/(len(qs))
 		p_g = len(Student.objects.filter(school=school_name,gender="f"))*100.0/(len(qs))
-		qs = Student.objects.filter(school=school_name).order_by('-marks')
+		qs = StudentFilterLatest({'school':school_name},'-marks')
 		for i in qs:
 			top_marks.append({'name':i.name,'marks':i.marks})
-		qs = Student.objects.filter(school=school_name).order_by('-extra_curr')
+		qs = StudentFilterLatest({'school':school_name},'-extra_curr')
 		for i in qs:
 			top_extra_curr.append({'name':i.name,'extra_curr':i.extra_curr})
-		qs = Student.objects.filter(school=school_name).order_by('-sport')
+		qs = StudentFilterLatest({'school':school_name},'-sport')
 		for i in qs:
 			top_sport.append({'name':i.name,'sport':i.sport})
 		s_n = school_name
@@ -875,18 +861,17 @@ def getSchoolData(request,school_name):
 		avg_sport /= len(Student.objects.filter(school=school_name))
 		avg_extra_curr /= len(Student.objects.filter(school=school_name)) 
 		b_marks = []	
-		qs = Student.objects.filter(school=school_name,gender='m').order_by('-marks')
+		qs = StudentFilterLatest({'school':school_name,'gender':'m'},'-marks')
 		for i in qs:
 			b_marks.append({'name':i.name,'marks':i.marks})
 		g_marks = []	
-		qs = Student.objects.filter(school=school_name,gender='f').order_by('-marks')
+		qs = StudentFilterLatest({'school':school_name,'gender':'f'},'-marks')
 		for i in qs:
 			g_marks.append({'name':i.name,'marks':i.marks})
 		ret = {'s_n':s_n,'p_marks':top_marks,'p_sport':top_sport,'top_extra_curr':top_extra_curr,'p_c':p_c,'p_b':p_b,'p_g':p_g,'avg_marks':avg_marks,'avg_sport':avg_sport,'avg_extra_curr':avg_extra_curr,'b_marks':b_marks,'g_marks':g_marks}
 		print(ret)
 	return JsonResponse(ret)
 
-@csrf_exempt
 def filter_data(request):
 	if request.method == 'POST':
 		filter_info = json.loads(request.body.decode('utf-8'))
@@ -894,36 +879,32 @@ def filter_data(request):
 		fil_type = filter_info['filter_type']
 		stu_sel = filter_info['students_selected']
 		filter_default = filter_info['filter_default']
-		pprint(filter_info)
-		
 		s_All = Student.objects.all()
-		set_filter_id = -1
 
 		for s in s_All:
 			for i in range(1, 6):
+				if not getattr(s, 'filter{}_active'.format(i)):
+					setattr(s, 'filter{}_name'.format(i), fil_name)
+					setattr(s, 'filter{}_type'.format(i), fil_type)
+					setattr(s, 'filter{}_active'.format(i), True)
+					setattr(s, 'filter{}_val'.format(i), filter_default)
+					s.save()
+					break
+
+		for i in stu_sel:
+			t,v = list(i.items())[0]
+			ss = Student.objects.filter(aadhar_id=t)
+			for s in ss:
+				for i in range(1, 6):
 					if not getattr(s, 'filter{}_active'.format(i)):
-						set_filter_id = i
-						setattr(s, 'filter{}_name'.format(set_filter_id), fil_name)
-						setattr(s, 'filter{}_type'.format(set_filter_id), fil_type)
-						setattr(s, 'filter{}_active'.format(set_filter_id), True)
-						setattr(s, 'filter{}_val'.format(set_filter_id), filter_default)
+						setattr(s, 'filter{}_name'.format(i), fil_name)
+						setattr(s, 'filter{}_type'.format(i), fil_type)
+						setattr(s, 'filter{}_active'.format(i), True)
+						setattr(s, 'filter{}_val'.format(i), v)
 						s.save()
 						break
 
-		for i in stu_sel:
-			t = i['aadhar_id']
-			v = i['value']
-
-			ss = Student.objects.filter(aadhar_id=t)
-			for s in ss:					
-				setattr(s, 'filter{}_name'.format(set_filter_id), fil_name)
-				setattr(s, 'filter{}_type'.format(set_filter_id), fil_type)
-				setattr(s, 'filter{}_active'.format(set_filter_id), True)
-				setattr(s, 'filter{}_val'.format(set_filter_id), v)
-				s.save()
-				break
-
-	return JsonResponse({'error':False})
+	return JsonResponse({'error':false})
 
 @csrf_exempt
 def import_data(request):
