@@ -50,11 +50,11 @@ class Progress2 extends Component {
 
             <Grid item xs={6} style={{ textAlign: "right", height: "75px" }}>
               <Typography title={data["name"].toUpperCase()} className={classes.bigNumber}>
-                {Math.floor(parseFloat(data["sports"]))}%
+                {Math.floor(parseFloat(data["extra_curr"]*10))}%
               </Typography>
             </Grid>
           </Grid>
-          <LinearProgress variant="determinate" value={data["sports"]} style={{ marginTop: 10 }} />
+          <LinearProgress variant="determinate" value={data["extra_curr"]*10} style={{ marginTop: 10 }} />
         </CardContent>
       </Card>;
   }
