@@ -16,6 +16,9 @@ import AssIcon from 'material-ui-icons/Assessment'
 import WorldIcon from 'material-ui-icons/Language'
 import Typography from 'material-ui/Typography';
 import Progress from '../Progress'
+import Progress1 from '../Progress1'
+import Progress2 from '../Progress2'
+import Progress3 from '../Progress3'
 import { ListItem, ListItemText, ListSubheader } from 'material-ui/List'
 import { addGraph, getAllGraphs, removeGraph } from '../../actions/graph'
 import { addList, getAllLists, removeList } from '../../actions/list'
@@ -98,7 +101,7 @@ render() {
              <Paper style={{height:"inherit"}}>
             <Typography style={{fontSize:'15px',textAlign:'center'}}>Best Student-Sports</Typography>
 
-              <Progress data={p_sport[0]} style={{marginBottom: 10}}/>
+              <Progress3 data={p_sport[0]} style={{marginBottom: 10}}/>
            </Paper>
               </Grid>
               <Grid item xs={3}>
@@ -147,7 +150,7 @@ render() {
        <Paper style={{height:"inherit"}}>
             <Typography style={{fontSize:'15px',textAlign:'center'}}>Best Student-Extra Curricular</Typography>
 
-              <Progress data={top_extra_curr[0]} style={{marginBottom: 10}}/>
+              <Progress3 data={top_extra_curr[0]} style={{marginBottom: 10}}/>
            </Paper>
            
           <br/>
